@@ -103,12 +103,13 @@ fn_create_tun_interface() {
 
 fn_remove_tun_interface() {
     echo "Remove tun interface $IFACE: $IFACE_IP $IFACE_MASK"
+    local iface=$(echo "$IFACE" | sed 's/^opkg/Opkg/; s/tun/Tun/')
 
-    # /bin/ndmc -c "interface $IFACE down" || {
+    # /bin/ndmc -c "interface $iface down" || {
     #     echo "Error: failed to bring interface down" >&2
     #     return 1
     # }
-    /bin/ndmc -c "no interface $IFACE" || {
+    /bin/ndmc -c "no interface $iface" || {
         echo "Error: failed to destroy interface $IFACE" >&2
         return 1
     }
