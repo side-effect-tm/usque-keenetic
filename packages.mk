@@ -143,3 +143,13 @@ pkg-multi:
 
 pkg-all: pkg-mips pkg-mipsel pkg-aarch64 pkg-multi
 
+
+pkg-dev:
+	make \
+		BUILD_DIR=aarch64 \
+		PKG_ARCH=aarch64-3.10 \
+		TARGET_ARCH=mips \
+		USQUE_ARCH=mips \
+		FILENAME=usque-keenetic_$(VERSION)_aarch64-3.10.ipk \
+		_pkg-prepare _pkg-build-aarch64 _pkg-content _pkg-cleanup
+
