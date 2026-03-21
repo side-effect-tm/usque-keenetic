@@ -67,33 +67,34 @@ fn_create_tun_interface() {
     fn_reserve_if_description
 
     echo "Create tun interface $IFACE: $IFACE_IP $IFACE_MASK"
+    local iface=$(echo "$IFACE" | sed 's/^opkg/Opkg/; s/tun/Tun/')
 
-    /bin/ndmc -c "no interface $IFACE"
-    /bin/ndmc -c "interface $IFACE" || {
-        echo "Error: failed to create interface $IFACE" >&2
+    /bin/ndmc -c "no interface $iface"
+    /bin/ndmc -c "interface $iface" || {
+        echo "Error: failed to create interface $iface" >&2
         return 1
     }
-    /bin/ndmc -c "interface $IFACE description $IFACE_NAME" || {
+    /bin/ndmc -c "interface $iface description $IFACE_NAME" || {
         echo "Error: failed to set description" >&2
         return 1
     }
-    /bin/ndmc -c "interface $IFACE ip global auto" || {
+    /bin/ndmc -c "interface $iface ip global auto" || {
         echo "Error: failed to set global auto" >&2
         return 1
     }
-    /bin/ndmc -c "interface $IFACE ip tcp adjust-mss pmtu" || {
+    /bin/ndmc -c "interface $iface ip tcp adjust-mss pmtu" || {
         echo "Error: failed to set adjust-mss" >&2
         return 1
     }
-    /bin/ndmc -c "interface $IFACE ip address $IFACE_IP $IFACE_MASK" || {
+    /bin/ndmc -c "interface $iface ip address $IFACE_IP $IFACE_MASK" || {
         echo "Error: failed to set IP address" >&2
         return 1
     }
-    /bin/ndmc -c "interface $IFACE ip mtu 1280" || {
+    /bin/ndmc -c "interface $iface ip mtu 1280" || {
         echo "Error: failed to set MTU" >&2
         return 1
     }
-    /bin/ndmc -c "interface $IFACE up" || {
+    /bin/ndmc -c "interface $iface up" || {
         echo "Error: failed to bring interface up" >&2
         return 1
     }
