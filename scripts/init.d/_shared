@@ -6,9 +6,9 @@ if [ -f "$CONFIG_FILE.run" ]; then
 fi
 
 fn_is_running() {
-    PID_RUNNING=$(pgrep -nf "$USQUE_BIN" 2>/dev/null)
+    local pid_running=$(pgrep -nf "$USQUE_BIN" 2>/dev/null)
 
-    if [ -z "$PID_RUNNING" ]; then
+    if [ -z "$pid_running" ]; then
         return 1
     fi
 
@@ -16,12 +16,12 @@ fn_is_running() {
         return 1
     fi
 
-    PID_SAVED=$(cat "$PIDFILE" 2>/dev/null)
-    if [ "$PID_RUNNING" -ne "$PID_SAVED" ]; then
+    local pid_saved=$(cat "$PIDFILE" 2>/dev/null)
+    if [ "$pid_running" -ne "$pid_saved" ]; then
         return 1
     fi
 
-    if ! kill -0 $PID_SAVED; then
+    if ! kill -0 $pid_saved; then
         return 1
     fi
 
@@ -31,7 +31,7 @@ fn_is_running() {
 
 fn_status() {
     if fn_is_running; then
-        echo "Service $NAME is running (PID $(cat PIDFILE))"
+        echo "Service $NAME is running (PID $(cat $PIDFILE))"
     else
         echo "Service $NAME is stopped"
     fi
@@ -49,7 +49,7 @@ fn_create_running_config() {
 
 fn_remove_running_config() {
     rm -f "$CONFIG_FILE.run"
-    source "$CONFIG_FILE"
+    . "$CONFIG_FILE"
 }
 
 fn_daemon_args() {
