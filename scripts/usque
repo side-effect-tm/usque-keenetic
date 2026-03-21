@@ -9,7 +9,7 @@ fn_has_session() {
 
 fn_create_session() {
     echo "Register a new client and enroll a device key"
-    $USQUE_BIN register -c "$SESSION_FILE"
+    $USQUE_BIN register --accept-tos --config "$SESSION_FILE"
 }
 
 fn_remove_session() {
