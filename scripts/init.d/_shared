@@ -53,7 +53,8 @@ fn_remove_running_config() {
 }
 
 fn_daemon_args() {
-    local args="nativetun --interface-name $IFACE --no-iproute2"
+    local iface=$(echo "$IFACE" | tr '[:upper:]' '[:lower:]')
+    local args="nativetun --interface-name $iface --no-iproute2"
 
     if [ -n "$SNI" ]; then
         args="$args -s $SNI"
