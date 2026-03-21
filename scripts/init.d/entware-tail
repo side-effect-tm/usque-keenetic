@@ -11,9 +11,14 @@ fn_start() {
     fn_create_tun_interface || return 1
     fn_create_running_config
 
-    start-stop-daemon --start --background --make-pidfile \
-        --chuid "$USER" \
-        --pidfile "$PIDFILE" --exec "$USQUE_BIN" -- $(fn_daemon_args)
+    start-stop-daemon -S -bmc "$USER" -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
+        echo "Failed to start $NAME service"
+
+        fn_remove_tun_interface
+        fn_remove_running_config
+        rm -f "$PIDFILE"
+        return 1
+    }
 
     echo "Started $NAME service"
 }
@@ -26,7 +31,7 @@ fn_stop() {
 
     echo "Stopping $NAME service..."
     # kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
-    start-stop-daemon --stop --pidfile "$PIDFILE" --retry 5 && rm -f "$PIDFILE"
+    start-stop-daemon -K -p "$PIDFILE" && rm -f "$PIDFILE"
 
     fn_remove_running_config
     fn_remove_tun_interface
