@@ -1,0 +1,52 @@
+#!/bin/sh
+
+fn_start() {
+    if fn_is_running; then
+        echo "Service $NAME is already running" >&2
+        return 1
+    fi
+
+    fn_validate_config || return 1
+    fn_create_session_if_required || return 1
+    fn_create_tun_interface || return 1
+    fn_create_running_config
+
+    start-stop-daemon --start --background --make-pidfile \
+        --chuid "$USER" \
+        --pidfile "$PIDFILE" --exec "$USQUE_BIN" -- $(fn_daemon_args)
+
+    echo "Started $NAME service"
+}
+
+fn_stop() {
+    if ! fn_is_running; then
+        echo "Service $NAME is not running" >&2
+        return 1
+    fi
+
+    echo "Stopping $NAME service..."
+    # kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
+    start-stop-daemon --stop --pidfile "$PIDFILE" --retry 5 && rm -f "$PIDFILE"
+
+    fn_remove_running_config
+    fn_remove_tun_interface
+}
+
+case "$1" in
+start)
+    fn_start
+    ;;
+stop)
+    fn_stop
+    ;;
+status)
+    fn_status
+    ;;
+restart)
+    fn_stop
+    fn_start
+    ;;
+*)
+    echo "Usage: $0 {start|stop|restart|status}"
+    ;;
+esac

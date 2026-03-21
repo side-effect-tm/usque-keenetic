@@ -1,0 +1,25 @@
+#!/bin/sh
+
+fn_has_session() {
+    if [ -f "$SESSION_FILE" ]; then
+        return 0
+    fi
+    return 1
+}
+
+fn_create_session() {
+    echo "Register a new client and enroll a device key"
+    $USQUE_BIN register -c "$SESSION_FILE"
+}
+
+fn_remove_session() {
+    echo "Remove client data and device key"
+    rm -f "$SESSION_FILE"
+}
+
+fn_create_session_if_required() {
+    fn_has_session || fn_create_session || {
+        echo "Failed to register a new client and enroll a device key" >&2
+        return 1
+    }
+}

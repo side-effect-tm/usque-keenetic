@@ -1,0 +1,115 @@
+#!/bin/sh
+
+fn_get_available_tun_interface() {
+    local existing=$(ip -o link show | awk -F': ' '{print $2}' | grep '^opkgtun[0-9]*$')
+
+    if [ -z "$existing" ]; then
+        echo "opkgtun0"
+        return 0
+    fi
+
+    local max=$(echo "$existing" | sed 's/opkgtun//' | sort -n | tail -1)
+    local next=$((max + 1))
+
+    echo "opkgtun$next"
+}
+
+fn_get_available_ip() {
+    local subnet="172.16.1"
+    local start=100
+    local end=200
+
+    for i in $(seq $start $end); do
+        local ip="$subnet.$i"
+
+        if ! grep -q "$ip" /proc/net/arp 2>/dev/null &&
+            ! ping -c 1 -W 1 "$ip" >/dev/null 2>&1; then
+            echo "$ip"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+fn_reserve_if() {
+    if [ -z "$IFACE" ]; then
+        IFACE=$(fn_get_available_tun_interface)
+    fi
+    echo "$IFACE"
+}
+
+fn_reserve_if_ip() {
+    if [ -z "$IFACE_IP" ]; then
+        IFACE_IP=$(fn_get_available_ip)
+    fi
+    echo "$IFACE_IP"
+}
+
+fn_reserve_if_mask() {
+    if [ -z "$IFACE_MASK" ]; then
+        IFACE_MASK="255.255.255.255"
+    fi
+    echo "$IFACE_MASK"
+}
+
+fn_reserve_if_description() {
+    if [ -z "$IFACE_NAME" ]; then
+        IFACE_NAME="usque"
+    fi
+    echo "$IFACE_NAME"
+}
+
+fn_create_tun_interface() {
+    fn_reserve_if
+    fn_reserve_if_ip
+    fn_reserve_if_mask
+    fn_reserve_if_description
+
+    echo "Create tun interface $IFACE: $IFACE_IP $IFACE_MASK"
+
+    /bin/ndmc -c "no interface $IFACE"
+    /bin/ndmc -c "interface $IFACE" || {
+        echo "Error: failed to create interface $IFACE" >&2
+        return 1
+    }
+    /bin/ndmc -c "interface $IFACE description $IFACE_NAME" || {
+        echo "Error: failed to set description" >&2
+        return 1
+    }
+    /bin/ndmc -c "interface $IFACE ip global auto" || {
+        echo "Error: failed to set global auto" >&2
+        return 1
+    }
+    /bin/ndmc -c "interface $IFACE ip tcp adjust-mss pmtu" || {
+        echo "Error: failed to set adjust-mss" >&2
+        return 1
+    }
+    /bin/ndmc -c "interface $IFACE ip address $IFACE_IP $IFACE_MASK" || {
+        echo "Error: failed to set IP address" >&2
+        return 1
+    }
+    /bin/ndmc -c "interface $IFACE ip mtu 1280" || {
+        echo "Error: failed to set MTU" >&2
+        return 1
+    }
+    /bin/ndmc -c "interface $IFACE up" || {
+        echo "Error: failed to bring interface up" >&2
+        return 1
+    }
+    # /bin/ndmc -c "system configuration save"
+}
+
+fn_remove_tun_interface() {
+    echo "Remove tun interface $IFACE: $IFACE_IP $IFACE_MASK"
+
+    # /bin/ndmc -c "interface $IFACE down" || {
+    #     echo "Error: failed to bring interface down" >&2
+    #     return 1
+    # }
+    /bin/ndmc -c "no interface $IFACE" || {
+        echo "Error: failed to destroy interface $IFACE" >&2
+        return 1
+    }
+    # /bin/ndmc -c "system configuration save"
+}

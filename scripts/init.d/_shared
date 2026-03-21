@@ -1,0 +1,63 @@
+#!/bin/sh
+
+. "$CONFIG_FILE"
+if [ -f "$CONFIG_FILE.run" ]; then
+    . "$CONFIG_FILE.run"
+fi
+
+fn_is_running() {
+    PID_RUNNING=$(pgrep -nf "$USQUE_BIN" 2>/dev/null)
+
+    if [ -z "$PID_RUNNING" ]; then
+        return 1
+    fi
+
+    if [ ! -f "$PIDFILE" ]; then
+        return 1
+    fi
+
+    PID_SAVED=$(cat "$PIDFILE" 2>/dev/null)
+    if [ "$PID_RUNNING" -ne "$PID_SAVED" ]; then
+        return 1
+    fi
+
+    if ! kill -0 $PID_SAVED; then
+        return 1
+    fi
+
+    # 0 = true, 1 = false
+    return 0
+}
+
+fn_status() {
+    if fn_is_running; then
+        echo "Service $NAME is running (PID $(cat PIDFILE))"
+    else
+        echo "Service $NAME is stopped"
+    fi
+}
+
+fn_validate_config() {
+    return 0
+}
+
+fn_create_running_config() {
+    echo "IFACE=\"$IFACE\"" >"$CONFIG_FILE.run"
+    echo "IFACE_IP=\"$IFACE_IP\"" >>"$CONFIG_FILE.run"
+    echo "IFACE_MASK=\"$IFACE_MASK\"" >>"$CONFIG_FILE.run"
+}
+
+fn_remove_running_config() {
+    rm -f "$CONFIG_FILE.run"
+    source "$CONFIG_FILE"
+}
+
+fn_daemon_args() {
+    local args="nativetun --interface-name $IFACE --no-iproute2"
+
+    if [ -n "$SNI" ]; then
+        args="$args -s $SNI"
+    fi
+
+    echo "$args"
+}

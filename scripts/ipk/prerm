@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Stop entware service
+fn_service_stop
+
+exit 0

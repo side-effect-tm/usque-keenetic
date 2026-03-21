@@ -1,0 +1,20 @@
+#!/bin/sh
+
+INIT_SCRIPT="/opt/etc/init.d/S51usque"
+CONFIG_DIR="/opt/etc/usque"
+CONFIG_FILE="$CONFIG_DIR/usque.conf"
+SERVICE_BIN="/opt/usr/bin/usque"
+LOG_FILE="/opt/var/log/usque.log"
+INSTALL_TYPE_FILE="/opt/tmp/usque_install_type"
+
+fn_service_start() {
+  if [ -f "$INIT_SCRIPT" ]; then
+    $INIT_SCRIPT start
+  fi
+}
+
+fn_service_stop() {
+  if [ -f "$INIT_SCRIPT" ]; then
+    $INIT_SCRIPT stop
+  fi
+}
