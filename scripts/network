@@ -150,7 +150,7 @@ fn_create_tun_interface() {
 
 fn_remove_tun_interface() {
     echo "Remove tun interface $IFACE"
-    local iface=$(echo "$IFACE" | sed 's/^opkg/Opkg/; s/tun/Tun/')
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
 
     # fn_ndm_if_down "$iface"
     fn_ndm_if_remove "$iface"
@@ -159,7 +159,7 @@ fn_remove_tun_interface() {
 
 fn_up_tun_interface() {
     echo "Up tun interface $IFACE"
-    local iface=$(echo "$IFACE" | sed 's/^opkg/Opkg/; s/tun/Tun/')
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
 
     fn_ndm_if_up "$iface"
     # fn_ndm_save_system_config
@@ -167,7 +167,7 @@ fn_up_tun_interface() {
 
 fn_down_tun_interface() {
     echo "Down tun interface $IFACE"
-    local iface=$(echo "$IFACE" | sed 's/^opkg/Opkg/; s/tun/Tun/')
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
 
     fn_ndm_if_down "$iface"
     # fn_ndm_save_system_config
