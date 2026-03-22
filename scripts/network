@@ -111,19 +111,35 @@ fn_ndm_save_system_config() {
 
 fn_load_tun_interface_config() {
     if [ -z "$IFACE" ]; then
-        IFACE=$(fn_get_available_tun_interface)
+        if [ -n "$RESERVED_IFACE" ]; then
+            IFACE="$RESERVED_IFACE"
+        else
+            IFACE=$(fn_get_available_tun_interface)
+        fi
     fi
 
     if [ -z "$IFACE_IP" ]; then
-        IFACE_IP=$(fn_get_available_ip)
+        if [ -n "$RESERVED_IFACE_IP" ]; then
+            IFACE_IP="$RESERVED_IFACE_IP"
+        else
+            IFACE_IP=$(fn_get_available_ip)
+        fi
     fi
 
     if [ -z "$IFACE_MASK" ]; then
-        IFACE_MASK="255.255.255.255"
+        if [ -n "$RESERVED_IFACE_MASK" ]; then
+            IFACE_MASK="$RESERVED_IFACE_MASK"
+        else
+            IFACE_MASK="255.255.255.255"
+        fi
     fi
 
     if [ -z "$IFACE_NAME" ]; then
-        IFACE_NAME="usque"
+        if [ -n "$RESERVED_IFACE_NAME" ]; then
+            IFACE_NAME="$RESERVED_IFACE_NAME"
+        else
+            IFACE_NAME="usque"
+        fi
     fi
 }
 
