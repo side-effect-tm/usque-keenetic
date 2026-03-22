@@ -149,8 +149,8 @@ fn_create_tun_interface() {
 }
 
 fn_remove_tun_interface() {
-    echo "Remove tun interface $IFACE"
-    local iface=$(fn_convert_to_ndm_name "$IFACE")
+    echo "Remove tun interface $RESERVED_IFACE"
+    local iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
 
     # fn_ndm_if_down "$iface"
     fn_ndm_if_remove "$iface"
@@ -158,28 +158,41 @@ fn_remove_tun_interface() {
 }
 
 fn_up_tun_interface() {
-    echo "Up tun interface $IFACE"
-    local iface=$(fn_convert_to_ndm_name "$IFACE")
+    if [ -z "$RESERVED_IFACE" ]; then
+        echo "No reserved interface to work with"
+        return 1
+    fi
+
+    echo "Up tun interface $RESERVED_IFACE"
+    local iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
 
     fn_ndm_if_up "$iface"
     # fn_ndm_save_system_config
 }
 
 fn_down_tun_interface() {
-    echo "Down tun interface $IFACE"
-    local iface=$(fn_convert_to_ndm_name "$IFACE")
+    if [ -z "$RESERVED_IFACE" ]; then
+        echo "No reserved interface to work with"
+        return 1
+    fi
+
+    echo "Down tun interface $RESERVED_IFACE"
+    local iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
 
     fn_ndm_if_down "$iface"
     # fn_ndm_save_system_config
 }
 
 fn_acquire_tun_interface() {
+    echo "Resolve interface credentials..."
+    fn_load_tun_interface_config || return 1
+
     local changed=0
 
     if [ "$IFACE" != "$RESERVED_IFACE" ]; then
         if [ -n "$RESERVED_IFACE" ]; then
-            echo "Interface $RESERVED_IFACE changed to $IFACE"
-            echo "Remove old reserved interface $RESERVED_IFACE"
+            echo "Acquired interface $RESERVED_IFACE changed to $IFACE"
+            echo "Remove old acquired interface $RESERVED_IFACE"
             local reserved_iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
             fn_ndm_remove_interface "$reserved_iface"
         fi
@@ -212,12 +225,18 @@ fn_acquire_tun_interface() {
     fi
 
     if [ "$changed" -eq 1 ]; then
+        RESERVED_IFACE="$IFACE"
         fn_create_reserved_config
         fn_ndm_save_system_config
     fi
 }
 
 fn_release_tun_interface() {
+    if [ -z "$RESERVED_IFACE" ]; then
+        echo "No reserved interface to work with"
+        return 1
+    fi
+
     fn_remove_tun_interface
     fn_remove_reserved_config
     fn_ndm_save_system_config

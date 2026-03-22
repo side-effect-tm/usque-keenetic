@@ -9,7 +9,6 @@ fn_start() {
     fn_validate_config || return 1
     fn_create_session_if_required || return 1
 
-    fn_load_tun_interface_config || return 1
     fn_acquire_tun_interface || return 1
     fn_up_tun_interface || return 1
     fn_create_running_config
@@ -72,13 +71,13 @@ restart)
     fn_stop
     fn_start
     ;;
-acquire_if)
+acquire-if)
     fn_acquire_if
     ;;
-release_if)
+release-if)
     fn_release_if
     ;;
 *)
-    echo "Usage: $0 {start|stop|restart|status|acquire_if|release_if}"
+    echo "Usage: $0 {start|stop|restart|status|acquire-if|release-if}"
     ;;
 esac
