@@ -202,7 +202,7 @@ fn_acquire_tun_interface() {
             echo "Acquired interface $RESERVED_IFACE changed to $IFACE"
             echo "Remove old acquired interface $RESERVED_IFACE"
             local reserved_iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
-            fn_ndm_remove_interface "$reserved_iface"
+            fn_ndm_if_remove "$reserved_iface"
         fi
 
         # create new interface
