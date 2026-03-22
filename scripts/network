@@ -84,18 +84,23 @@ fn_ndm_if_set_description() {
         "Failed to set description for interface $1"
 }
 
-# $1 - interface
+# $1 - ndm interface
 fn_ndm_if_up() {
     fn_ndm_cmd \
         "interface $1 up" \
         "Failed to up interface $1"
 }
 
-# $1 - interface
+# $1 - ndm interface
 fn_ndm_if_down() {
     fn_ndm_cmd \
         "interface $1 down" \
         "Failed to down interface $1"
+}
+
+# $1 - ndm interface
+fn_ndm_if_exists() {
+    ndmc -c "show interface" 2>/dev/null | grep -q "$1"
 }
 
 fn_ndm_save_system_config() {
@@ -126,7 +131,10 @@ fn_create_tun_interface() {
     echo "Create tun interface $IFACE: $IFACE_IP $IFACE_MASK"
     local iface=$(fn_convert_to_ndm_name "$IFACE")
 
-    fn_ndm_if_remove "$iface"
+    if fn_ndm_if_exists "$iface"; then
+        fn_ndm_if_remove "$iface"
+    fi
+
     fn_ndm_if_create "$iface" || return 1
     fn_ndm_if_set_description "$iface" "$IFACE_NAME" || return 1
 
