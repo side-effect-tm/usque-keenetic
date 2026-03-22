@@ -5,6 +5,10 @@ if [ -f "$CONFIG_FILE.run" ]; then
     . "$CONFIG_FILE.run"
 fi
 
+if [ -f "$CONFIG_FILE.reserved" ]; then
+    . "$CONFIG_FILE.reserved"
+fi
+
 fn_is_running() {
     local pid_running=$(pgrep -nf "$USQUE_BIN" 2>/dev/null)
 
@@ -50,6 +54,17 @@ fn_create_running_config() {
 fn_remove_running_config() {
     rm -f "$CONFIG_FILE.run"
     . "$CONFIG_FILE"
+}
+
+fn_create_reserved_config() {
+    echo "RESERVED_IFACE=\"$IFACE\"" >"$CONFIG_FILE.reserved"
+    echo "RESERVED_IFACE_IP=\"$IFACE_IP\"" >>"$CONFIG_FILE.reserved"
+    echo "RESERVED_IFACE_MASK=\"$IFACE_MASK\"" >>"$CONFIG_FILE.reserved"
+    echo "RESERVED_IFACE_NAME=\"$IFACE_NAME\"" >>"$CONFIG_FILE.reserved"
+}
+
+fn_remove_reserved_config() {
+    rm -f "$CONFIG_FILE.reserved"
 }
 
 fn_daemon_args() {

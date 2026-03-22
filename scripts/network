@@ -32,86 +32,193 @@ fn_get_available_ip() {
     return 1
 }
 
-fn_reserve_if() {
+fn_convert_to_ndm_name() {
+    echo "$1" | sed 's/^opkg/Opkg/; s/tun/Tun/'
+}
+
+# $1 - ndm command
+# $2 - error message
+fn_ndm_cmd() {
+    local out
+    out=$(/bin/ndmc -c "$1" 2>&1 >/dev/null) || {
+        echo "$2:"
+        echo "| $out" >&2
+        return 1
+    }
+}
+
+# $1 - ndm interface
+fn_ndm_if_create() {
+    fn_ndm_cmd \
+        "interface $1" \
+        "Failed to create interface $1"
+}
+
+# $1 - ndm interface
+fn_ndm_if_remove() {
+    fn_ndm_cmd \
+        "no interface $1" \
+        "Failed to remove interface $1"
+}
+
+# $1 - ndm interface
+# $2 - ip
+# $3 - netmask
+fn_ndm_if_set_address() {
+    fn_ndm_cmd \
+        "interface $1 ip address $2 $3" \
+        "Failed to set ip/netmask for interface $1"
+    # local out
+    # out=$(/bin/ndmc -c "interface $1 ip address $2 $3" 2>&1 >/dev/null) || {
+    #     echo "Failed to set ip/netmask for interface $1:"
+    #     echo "| $out" >&2
+    #     return 1
+    # }
+}
+
+# $1 - ndm interface
+# $2 - description
+fn_ndm_if_set_description() {
+    fn_ndm_cmd \
+        "interface $1 description $2" \
+        "Failed to set description for interface $1"
+}
+
+# $1 - interface
+fn_ndm_if_up() {
+    fn_ndm_cmd \
+        "interface $1 up" \
+        "Failed to up interface $1"
+}
+
+# $1 - interface
+fn_ndm_if_down() {
+    fn_ndm_cmd \
+        "interface $1 down" \
+        "Failed to down interface $1"
+}
+
+fn_ndm_save_system_config() {
+    fn_ndm_cmd \
+        "system configuration save" \
+        "Failed to save system config"
+}
+
+fn_load_tun_interface_config() {
     if [ -z "$IFACE" ]; then
         IFACE=$(fn_get_available_tun_interface)
     fi
-    echo "$IFACE"
-}
 
-fn_reserve_if_ip() {
     if [ -z "$IFACE_IP" ]; then
         IFACE_IP=$(fn_get_available_ip)
     fi
-    echo "$IFACE_IP"
-}
 
-fn_reserve_if_mask() {
     if [ -z "$IFACE_MASK" ]; then
         IFACE_MASK="255.255.255.255"
     fi
-    echo "$IFACE_MASK"
-}
 
-fn_reserve_if_description() {
     if [ -z "$IFACE_NAME" ]; then
         IFACE_NAME="usque"
     fi
-    echo "$IFACE_NAME"
 }
 
 fn_create_tun_interface() {
-    fn_reserve_if
-    fn_reserve_if_ip
-    fn_reserve_if_mask
-    fn_reserve_if_description
-
     echo "Create tun interface $IFACE: $IFACE_IP $IFACE_MASK"
-    local iface=$(echo "$IFACE" | sed 's/^opkg/Opkg/; s/tun/Tun/')
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
 
-    /bin/ndmc -c "no interface $iface"
-    /bin/ndmc -c "interface $iface" || {
-        echo "Error: failed to create interface $iface" >&2
-        return 1
-    }
-    /bin/ndmc -c "interface $iface description $IFACE_NAME" || {
-        echo "Error: failed to set description" >&2
-        return 1
-    }
-    /bin/ndmc -c "interface $iface ip global auto" || {
-        echo "Error: failed to set global auto" >&2
-        return 1
-    }
-    /bin/ndmc -c "interface $iface ip tcp adjust-mss pmtu" || {
-        echo "Error: failed to set adjust-mss" >&2
-        return 1
-    }
-    /bin/ndmc -c "interface $iface ip address $IFACE_IP $IFACE_MASK" || {
-        echo "Error: failed to set IP address" >&2
-        return 1
-    }
-    /bin/ndmc -c "interface $iface ip mtu 1280" || {
-        echo "Error: failed to set MTU" >&2
-        return 1
-    }
-    /bin/ndmc -c "interface $iface up" || {
-        echo "Error: failed to bring interface up" >&2
-        return 1
-    }
-    # /bin/ndmc -c "system configuration save"
+    fn_ndm_if_remove "$iface"
+    fn_ndm_if_create "$iface" || return 1
+    fn_ndm_if_set_description "$iface" "$IFACE_NAME" || return 1
+
+    fn_ndm_cmd \
+        "interface $iface ip global auto" \
+        "Failed to perform 'ip global auto'" || return 1
+
+    fn_ndm_cmd \
+        "interface $iface ip tcp adjust-mss pmtu" \
+        "Failed to set perform 'ip tcp adjust-mss pmtu'" || return 1
+
+    fn_ndm_if_set_address "$iface" "$IFACE_IP" "$IFACE_MASK" || return 1
+
+    fn_ndm_cmd \
+        "interface $iface ip mtu 1280" \
+        "Failed to set MTU" || return 1
+
+    # fn_ndm_if_up "$iface"
+    # fn_ndm_save_system_config
 }
 
 fn_remove_tun_interface() {
-    echo "Remove tun interface $IFACE: $IFACE_IP $IFACE_MASK"
+    echo "Remove tun interface $IFACE"
     local iface=$(echo "$IFACE" | sed 's/^opkg/Opkg/; s/tun/Tun/')
 
-    # /bin/ndmc -c "interface $iface down" || {
-    #     echo "Error: failed to bring interface down" >&2
-    #     return 1
-    # }
-    /bin/ndmc -c "no interface $iface" || {
-        echo "Error: failed to destroy interface $IFACE" >&2
-        return 1
-    }
-    # /bin/ndmc -c "system configuration save"
+    # fn_ndm_if_down "$iface"
+    fn_ndm_if_remove "$iface"
+    # fn_ndm_save_system_config
+}
+
+fn_up_tun_interface() {
+    echo "Up tun interface $IFACE"
+    local iface=$(echo "$IFACE" | sed 's/^opkg/Opkg/; s/tun/Tun/')
+
+    fn_ndm_if_up "$iface"
+    # fn_ndm_save_system_config
+}
+
+fn_down_tun_interface() {
+    echo "Down tun interface $IFACE"
+    local iface=$(echo "$IFACE" | sed 's/^opkg/Opkg/; s/tun/Tun/')
+
+    fn_ndm_if_down "$iface"
+    # fn_ndm_save_system_config
+}
+
+fn_acquire_tun_interface() {
+    local changed=0
+
+    if [ "$IFACE" != "$RESERVED_IFACE" ]; then
+        if [ -n "$RESERVED_IFACE" ]; then
+            echo "Interface $RESERVED_IFACE changed to $IFACE"
+            echo "Remove old reserved interface $RESERVED_IFACE"
+            local reserved_iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
+            fn_ndm_remove_interface "$reserved_iface"
+        fi
+
+        # create new interface
+        fn_create_tun_interface || return 1
+        changed=1
+    else
+        local iface=$(fn_convert_to_ndm_name "$IFACE")
+
+        if [ -n "$RESERVED_IFACE_IP" ] && [ "$IFACE_IP" != "$RESERVED_IFACE_IP" ]; then
+            echo "IP address $RESERVED_IFACE_IP changed to $IFACE_IP"
+            changed=1
+        fi
+
+        if [ -n "$RESERVED_IFACE_MASK" ] && [ "$IFACE_MASK" != "$RESERVED_IFACE_MASK" ]; then
+            echo "Netmask $RESERVED_IFACE_MASK changed to $IFACE_MASK"
+            changed=1
+        fi
+
+        if [ -n "$RESERVED_IFACE_NAME" ] && [ "$IFACE_NAME" != "$RESERVED_IFACE_NAME" ]; then
+            echo "Interface name $RESERVED_IFACE_NAME changed to $IFACE_NAME"
+            fn_ndm_if_set_description "$iface" "$IFACE_NAME"
+            changed=1
+        fi
+
+        if [ "$changed" -eq 1 ]; then
+            fn_ndm_if_set_address "$iface" "$IFACE_IP" "$IFACE_MASK" || return 1
+        fi
+    fi
+
+    if [ "$changed" -eq 1 ]; then
+        fn_create_reserved_config
+        fn_ndm_save_system_config
+    fi
+}
+
+fn_release_tun_interface() {
+    fn_remove_tun_interface
+    fn_remove_reserved_config
+    fn_ndm_save_system_config
 }

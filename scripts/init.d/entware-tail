@@ -8,13 +8,16 @@ fn_start() {
 
     fn_validate_config || return 1
     fn_create_session_if_required || return 1
-    fn_create_tun_interface || return 1
+
+    fn_load_tun_interface_config || return 1
+    fn_acquire_tun_interface || return 1
+    fn_up_tun_interface || return 1
     fn_create_running_config
 
     start-stop-daemon -S -bmc "$USER" -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
         echo "Failed to start $NAME service"
 
-        fn_remove_tun_interface
+        fn_down_tun_interface
         fn_remove_running_config
         rm -f "$PIDFILE"
         return 1
@@ -33,8 +36,26 @@ fn_stop() {
     # kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
     start-stop-daemon -K -p "$PIDFILE" && rm -f "$PIDFILE"
 
+    fn_down_tun_interface
     fn_remove_running_config
-    fn_remove_tun_interface
+}
+
+fn_acquire_if() {
+    if fn_is_running; then
+        echo "Cannot perform while service $NAME is running" >&2
+        return 1
+    fi
+
+    fn_acquire_tun_interface
+}
+
+fn_release_if() {
+    if fn_is_running; then
+        echo "Cannot perform while service $NAME is running" >&2
+        return 1
+    fi
+
+    fn_release_tun_interface
 }
 
 case "$1" in
@@ -51,7 +72,13 @@ restart)
     fn_stop
     fn_start
     ;;
+acquire_if)
+    fn_acquire_if
+    ;;
+release_if)
+    fn_release_if
+    ;;
 *)
-    echo "Usage: $0 {start|stop|restart|status}"
+    echo "Usage: $0 {start|stop|restart|status|acquire_if|release_if}"
     ;;
 esac
