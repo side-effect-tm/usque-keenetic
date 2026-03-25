@@ -32,11 +32,11 @@ fn_stop() {
     fi
 
     echo "Stopping $NAME service..."
-    # kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
-    start-stop-daemon -K -p "$PIDFILE" && rm -f "$PIDFILE"
-
     fn_down_tun_interface
     fn_remove_running_config
+
+    # kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
+    start-stop-daemon -K -p "$PIDFILE" && rm -f "$PIDFILE"
 }
 
 fn_acquire_if() {
