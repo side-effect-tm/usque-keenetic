@@ -159,7 +159,7 @@ fn_create_tun_interface() {
 }
 
 fn_setup_tun_interface() {
-
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
     fn_ndm_if_set_description "$iface" "$IFACE_NAME" || return 1
 
     fn_ndm_cmd \
@@ -257,8 +257,6 @@ fn_acquire_tun_interface() {
         RESERVED_IFACE="$IFACE"
         fn_create_reserved_config
         fn_ndm_save_system_config
-    else
-        fn_setup_tun_interface
     fi
 }
 

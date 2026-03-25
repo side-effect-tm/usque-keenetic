@@ -13,7 +13,9 @@ fn_start() {
     fn_up_tun_interface || return 1
     fn_create_running_config
 
-    start-stop-daemon -S -bmc "$USER" -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
+    # usque require root for creating tun interface
+    # start-stop-daemon -S -bmc "$USER" -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
+    start-stop-daemon -S -bm -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
         echo "Failed to start $NAME service"
 
         fn_down_tun_interface
@@ -21,6 +23,8 @@ fn_start() {
         rm -f "$PIDFILE"
         return 1
     }
+
+    fn_setup_tun_interface
 
     echo "Started $NAME service"
 }
