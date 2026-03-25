@@ -152,6 +152,14 @@ fn_create_tun_interface() {
     fi
 
     fn_ndm_if_create "$iface" || return 1
+    fn_setup_tun_interface || return 1
+
+    # fn_ndm_if_up "$iface"
+    # fn_ndm_save_system_config
+}
+
+fn_setup_tun_interface() {
+
     fn_ndm_if_set_description "$iface" "$IFACE_NAME" || return 1
 
     fn_ndm_cmd \
@@ -167,9 +175,6 @@ fn_create_tun_interface() {
     fn_ndm_cmd \
         "interface $iface ip mtu 1280" \
         "Failed to set MTU" || return 1
-
-    # fn_ndm_if_up "$iface"
-    # fn_ndm_save_system_config
 }
 
 fn_remove_tun_interface() {
@@ -252,6 +257,8 @@ fn_acquire_tun_interface() {
         RESERVED_IFACE="$IFACE"
         fn_create_reserved_config
         fn_ndm_save_system_config
+    else
+        fn_setup_tun_interface
     fi
 }
 
