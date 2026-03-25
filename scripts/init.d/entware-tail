@@ -10,7 +10,6 @@ fn_start() {
     fn_create_session_if_required || return 1
 
     fn_acquire_tun_interface || return 1
-    fn_up_tun_interface || return 1
     fn_create_running_config
 
     # usque require root for creating tun interface
@@ -25,6 +24,7 @@ fn_start() {
     }
 
     fn_setup_tun_interface
+    fn_up_tun_interface
 
     echo "Started $NAME service"
 }
