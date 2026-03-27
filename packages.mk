@@ -144,7 +144,7 @@ pkg-multi:
 		PKG_ARCH=all \
 		FILENAME=usque-keenetic_$(VERSION)_all_entware.ipk \
 		_pkg-prepare _pkg-build-mipsel _pkg-build-mips _pkg-build-aarch64 \
-		_pkg-pack _pkg-content _pkg-cleanup
+		_pkg-content _pkg-pack _pkg-cleanup
 
 pkg-all: pkg-mips pkg-mipsel pkg-aarch64 pkg-multi
 
