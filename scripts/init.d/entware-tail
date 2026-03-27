@@ -11,6 +11,8 @@ fn_start() {
     fn_check_tun_interface || return 1
     fn_create_session_if_required || return 1
 
+    fn_acquire_tun_inerface || return 1
+
     echo "Starting $NAME service..."
     # usque require root for creating tun interface
     # start-stop-daemon -S -bmc "$USER" -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
@@ -31,7 +33,7 @@ fn_start() {
 
 fn_stop_internal() {
     echo "Stopping $NAME service..."
-    fn_down_tun_interface
+    fn_release_tun_interface
     fn_remove_running_config
 
     # kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"

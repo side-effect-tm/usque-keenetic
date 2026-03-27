@@ -61,6 +61,12 @@ fn_setup_config() {
         else
             sed -i -E "s#^IFACE=\".+\"#IFACE=\"$iface\"#" $CONFIG_FILE
             echo "Detected tun interface: $iface"
+
+            # try create ndm interface and save system config
+            local ndm_iface=$(fn_convert_to_ndm_name "$iface")
+            fn_ndm_if_create "$ndm_iface" && fn_ndm_save_system_config || {
+                echo "Cannot create NDM interface $ndm_iface"
+            }
         fi
     fi
 }

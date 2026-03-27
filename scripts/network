@@ -105,7 +105,7 @@ fn_ndm_if_down() {
 
 # $1 - ndm interface
 fn_ndm_if_exists() {
-    ndmc -c "show interface" 2>/dev/null | grep -q "$1"
+    ndmc -c "show interface $1" >/dev/null
 }
 
 fn_ndm_save_system_config() {
@@ -146,7 +146,7 @@ fn_create_tun_interface() {
     local iface=$(fn_convert_to_ndm_name "$IFACE")
 
     fn_ndm_if_create "$iface" || return 1
-    fn_ndm_save_system_config
+    # fn_ndm_save_system_config
 }
 
 fn_remove_tun_interface() {
@@ -155,10 +155,10 @@ fn_remove_tun_interface() {
 
     # fn_ndm_if_down "$iface"
     fn_ndm_if_remove "$iface" || return 1
-    fn_ndm_save_system_config
+    # fn_ndm_save_system_config
 }
 
-fn_up_tun_interface() {
+fn_acquire_tun_inerface() {
     local iface=$(fn_convert_to_ndm_name "$IFACE")
 
     if ! fn_ndm_if_exists "$iface"; then
@@ -186,11 +186,12 @@ fn_up_tun_interface() {
     fn_ndm_if_up "$iface" || return 1
 }
 
-fn_down_tun_interface() {
+fn_release_tun_interface() {
     if [ -z "$IFACE" ]; then
         echo "No interface to work with" >&2
         return 1
     fi
 
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
     fn_ndm_if_down "$iface"
 }

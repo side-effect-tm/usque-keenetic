@@ -1,6 +1,23 @@
 #!/bin/sh
 
+if [ -f "$CONFIG_FILE" ]; then
+    . "$CONFIG_FILE"
+fi
+
+fn_remove_ndm_interface() {
+    if [ -z "$IFACE" ]; then
+        echo "No interface to remove"
+        return 0
+    fi
+
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
+    fn_ndm_if_remove "$iface" && fn_ndm_save_system_config
+}
+
 # Stop entware service
 fn_service_stop
+
+# try create ndm interface and save system config
+fn_remove_ndm_interface
 
 exit 0
