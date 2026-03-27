@@ -1,75 +1,69 @@
 #!/bin/sh
 
 fn_install_binary() {
-  local OPKG_CONF="/opt/etc/opkg.conf"
-  local ARCH=
+    local OPKG_CONF="/opt/etc/opkg.conf"
+    local ARCH=
 
-  if [ -f "$OPKG_CONF" ]; then
-    ARCH=$(cat "$OPKG_CONF" | grep -oE 'mips-3|mips_|mipsel-3|mipsel_|mips64|aarch64-3|aarch64_|armv7|arm_|i386|i686|x86_64' | head -n 1)
-  fi
-  if [ -n "$ARCH" ]; then
-    case "$ARCH" in
-      "mips-3"|"mips_") ARCH="mips" ;;
-      "mipsel-3"|"mipsel_") ARCH="mipsel" ;;
-      "mips64") ARCH="mips64" ;;
-      "aarch64-3"|"aarch64_") ARCH="aarch64" ;;
-      "armv7"|"arm_") ARCH="armv7" ;;
-      "i386"|"i686") ARCH="x86" ;;
-      "x86_64") ARCH="x86_64" ;;
-    esac
-  fi
-
-  if [ -z $ARCH ]; then
-    ARCH=$(uname -m | grep -oE 'mips|mipsel|mips64|aarch64|armv7|i386|i686|x86_64|rlx')
-    if [ "$ARCH" == "rlx" ]; then
-      ARCH="lexra"
-    elif [ "$ARCH" == "mips" ]; then
-      if grep -qE 'system type.*MediaTek' /proc/cpuinfo; then
-        ARCH="mipsel"
-      fi
-    elif [ "$ARCH" == "i386" ] || [ "$ARCH" == "i686" ]; then
-      ARCH="x86"
+    if [ -f "$OPKG_CONF" ]; then
+        ARCH=$(cat "$OPKG_CONF" | grep -oE 'mips-3|mips_|mipsel-3|mipsel_|mips64|aarch64-3|aarch64_|armv7|arm_|i386|i686|x86_64' | head -n 1)
     fi
-  fi
+    if [ -n "$ARCH" ]; then
+        case "$ARCH" in
+        "mips-3" | "mips_") ARCH="mips" ;;
+        "mipsel-3" | "mipsel_") ARCH="mipsel" ;;
+        "mips64") ARCH="mips64" ;;
+        "aarch64-3" | "aarch64_") ARCH="aarch64" ;;
+        "armv7" | "arm_") ARCH="armv7" ;;
+        "i386" | "i686") ARCH="x86" ;;
+        "x86_64") ARCH="x86_64" ;;
+        esac
+    fi
 
-  if [ -z $ARCH ]; then
-    echo "Failed to detect architecture"
-    exit 1
-  fi
+    if [ -z $ARCH ]; then
+        ARCH=$(uname -m | grep -oE 'mips|mipsel|mips64|aarch64|armv7|i386|i686|x86_64|rlx')
+        if [ "$ARCH" == "rlx" ]; then
+            ARCH="lexra"
+        elif [ "$ARCH" == "mips" ]; then
+            if grep -qE 'system type.*MediaTek' /proc/cpuinfo; then
+                ARCH="mipsel"
+            fi
+        elif [ "$ARCH" == "i386" ] || [ "$ARCH" == "i686" ]; then
+            ARCH="x86"
+        fi
+    fi
 
-  echo "Detected arch: $ARCH"
+    if [ -z $ARCH ]; then
+        echo "Failed to detect architecture"
+        exit 1
+    fi
 
-  cp -f "/opt/tmp/usque-keenetic/$ARCH/usque" "$SERVICE_BIN"
-  chmod +x "$SERVICE_BIN"
-  rm -rf "/opt/tmp/usque-keenetic"
+    echo "Detected arch: $ARCH"
+
+    cp -f "/opt/tmp/usque-keenetic/$ARCH/usque" "$SERVICE_BIN"
+    chmod +x "$SERVICE_BIN"
+    rm -rf "/opt/tmp/usque-keenetic"
 }
 
 fn_setup_config() {
-  local USQUE_INSTALL_TYPE="install"
-  if [ -f "$INSTALL_TYPE_FILE" ]; then
-    # Set in preinst script
-    USQUE_INSTALL_TYPE=$(cat "$INSTALL_TYPE_FILE")
-    rm -f "$INSTALL_TYPE_FILE"
-  fi
+    local USQUE_INSTALL_TYPE="install"
+    if [ -f "$INSTALL_TYPE_FILE" ]; then
+        # Set in preinst script
+        USQUE_INSTALL_TYPE=$(cat "$INSTALL_TYPE_FILE")
+        rm -f "$INSTALL_TYPE_FILE"
+    fi
 
-  if [ "$USQUE_INSTALL_TYPE" = "install" ]; then
-    # TODO: Interface + IP
-
-    # # Interface
-    # local DEF_IFACE=$(isp_interface_func)
-    # sed -i -E "s#^ISP_INTERFACE=\".+\"#ISP_INTERFACE=\"$DEF_IFACE\"#" $CONFFILE
-    # echo "Detected ISP interface: $DEF_IFACE"
-    #
-    # # IPv6
-    # local IPV6=$(ipv6_enabled_func "$DEF_IFACE" && echo 1 || echo 0)
-    # sed -i -E "s#^IPV6_ENABLED=([0-9]+)#IPV6_ENABLED=$IPV6#" $CONFFILE
-    # echo "Detected IPv6: $IPV6"
-    #
-    # echo "Current working mode: auto"
-    # echo "You can change settings in the configuration file: $CONFFILE"
-  fi
+    if [ "$USQUE_INSTALL_TYPE" = "install" ]; then
+        # Interface
+        echo "Detect free tun interface..."
+        local iface=$(fn_get_available_tun_interface)
+        if [ $? -eq 1 ]; then
+            echo "Failed to detect tun interface. Set it manually in config file." >&2
+        else
+            sed -i -E "s#^IFACE=\".+\"#IFACE=\"$iface\"#" $CONFIG_FILE
+            echo "Detected tun interface: $iface"
+        fi
+    fi
 }
-
 
 # Stop entware service
 fn_service_stop

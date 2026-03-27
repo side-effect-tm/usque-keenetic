@@ -7,26 +7,37 @@ fn_start() {
     fi
 
     fn_validate_config || return 1
+    fn_resolve_tun_interface_config || return 1
+    fn_check_tun_interface || return 1
     fn_create_session_if_required || return 1
 
-    fn_acquire_tun_interface || return 1
-    fn_create_running_config
-
+    echo "Starting $NAME service..."
     # usque require root for creating tun interface
     # start-stop-daemon -S -bmc "$USER" -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
     start-stop-daemon -S -bm -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
-        echo "Failed to start $NAME service"
-
-        fn_down_tun_interface
-        fn_remove_running_config
+        echo "Failed to start $NAME service" >&2
         rm -f "$PIDFILE"
         return 1
     }
 
-    fn_setup_tun_interface
-    fn_up_tun_interface
+    fn_up_tun_interface || {
+        fn_stop_internal
+        return 1
+    }
 
+    fn_create_running_config
     echo "Started $NAME service"
+}
+
+fn_stop_internal() {
+    echo "Stopping $NAME service..."
+    fn_down_tun_interface
+    fn_remove_running_config
+
+    # kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
+    start-stop-daemon -K -p "$PIDFILE" && rm -f "$PIDFILE"
+
+    echo "Stopped $NAME service"
 }
 
 fn_stop() {
@@ -35,30 +46,7 @@ fn_stop() {
         return 1
     fi
 
-    echo "Stopping $NAME service..."
-    fn_down_tun_interface
-    fn_remove_running_config
-
-    # kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
-    start-stop-daemon -K -p "$PIDFILE" && rm -f "$PIDFILE"
-}
-
-fn_acquire_if() {
-    if fn_is_running; then
-        echo "Cannot perform while service $NAME is running" >&2
-        return 1
-    fi
-
-    fn_acquire_tun_interface
-}
-
-fn_release_if() {
-    if fn_is_running; then
-        echo "Cannot perform while service $NAME is running" >&2
-        return 1
-    fi
-
-    fn_release_tun_interface
+    fn_stop_internal
 }
 
 case "$1" in
@@ -75,13 +63,7 @@ restart)
     fn_stop
     fn_start
     ;;
-acquire-if)
-    fn_acquire_if
-    ;;
-release-if)
-    fn_release_if
-    ;;
 *)
-    echo "Usage: $0 {start|stop|restart|status|acquire-if|release-if}"
+    echo "Usage: $0 {start|stop|restart|status}"
     ;;
 esac

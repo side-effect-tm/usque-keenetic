@@ -32,6 +32,17 @@ fn_get_available_ip() {
     return 1
 }
 
+# $1 - interface
+fn_net_if_exists() {
+    ip link show "$1" 2>/dev/null | grep -q "$1"
+}
+
+# $1 - interface
+fn_convert_to_net_if_name() {
+    echo "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+# $1 - interface
 fn_convert_to_ndm_name() {
     echo "$1" | sed 's/^opkg/Opkg/; s/tun/Tun/'
 }
@@ -68,12 +79,6 @@ fn_ndm_if_set_address() {
     fn_ndm_cmd \
         "interface $1 ip address $2 $3" \
         "Failed to set ip/netmask for interface $1"
-    # local out
-    # out=$(/bin/ndmc -c "interface $1 ip address $2 $3" 2>&1 >/dev/null) || {
-    #     echo "Failed to set ip/netmask for interface $1:"
-    #     echo "| $out" >&2
-    #     return 1
-    # }
 }
 
 # $1 - ndm interface
@@ -109,37 +114,30 @@ fn_ndm_save_system_config() {
         "Failed to save system config"
 }
 
-fn_load_tun_interface_config() {
-    if [ -z "$IFACE" ]; then
-        if [ -n "$RESERVED_IFACE" ]; then
-            IFACE="$RESERVED_IFACE"
-        else
-            IFACE=$(fn_get_available_tun_interface)
-        fi
-    fi
-
+fn_resolve_tun_interface_config() {
     if [ -z "$IFACE_IP" ]; then
-        if [ -n "$RESERVED_IFACE_IP" ]; then
-            IFACE_IP="$RESERVED_IFACE_IP"
-        else
-            IFACE_IP=$(fn_get_available_ip)
+        local val=$(fn_get_available_ip)
+        if [ $? -eq 1 ]; then
+            echo "Failed to get dynamic ip address for interface $IFACE" >&2
+            return 1
         fi
+        IFACE_IP="$val"
     fi
 
     if [ -z "$IFACE_MASK" ]; then
-        if [ -n "$RESERVED_IFACE_MASK" ]; then
-            IFACE_MASK="$RESERVED_IFACE_MASK"
-        else
-            IFACE_MASK="255.255.255.255"
-        fi
+        IFACE_MASK="255.255.255.255"
     fi
 
     if [ -z "$IFACE_NAME" ]; then
-        if [ -n "$RESERVED_IFACE_NAME" ]; then
-            IFACE_NAME="$RESERVED_IFACE_NAME"
-        else
-            IFACE_NAME="usque"
-        fi
+        IFACE_NAME="usque"
+    fi
+}
+
+fn_check_tun_interface() {
+    local iface=$(fn_convert_to_net_if_name)
+    if fn_net_if_exists "$iface"; then
+        echo "Interface $IFACE is already in use." >&2
+        return 1
     fi
 }
 
@@ -147,19 +145,28 @@ fn_create_tun_interface() {
     echo "Create tun interface $IFACE: $IFACE_IP $IFACE_MASK"
     local iface=$(fn_convert_to_ndm_name "$IFACE")
 
-    if fn_ndm_if_exists "$iface"; then
-        fn_ndm_if_remove "$iface"
-    fi
-
     fn_ndm_if_create "$iface" || return 1
-    fn_setup_tun_interface || return 1
-
-    # fn_ndm_if_up "$iface"
-    # fn_ndm_save_system_config
+    fn_ndm_save_system_config
 }
 
-fn_setup_tun_interface() {
+fn_remove_tun_interface() {
+    echo "Remove tun interface $IFACE"
     local iface=$(fn_convert_to_ndm_name "$IFACE")
+
+    # fn_ndm_if_down "$iface"
+    fn_ndm_if_remove "$iface" || return 1
+    fn_ndm_save_system_config
+}
+
+fn_up_tun_interface() {
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
+
+    if ! fn_ndm_if_exists "$iface"; then
+        echo "Create tun interface $IFACE"
+        fn_ndm_if_create "$iface" || return 1
+    fi
+
+    echo "Setup tun interface $IFACE ($IFACE_NAME): ip=$IFACE_IP netmask=$IFACE_MASK"
     fn_ndm_if_set_description "$iface" "$IFACE_NAME" || return 1
 
     fn_ndm_cmd \
@@ -175,98 +182,15 @@ fn_setup_tun_interface() {
     fn_ndm_cmd \
         "interface $iface ip mtu 1280" \
         "Failed to set MTU" || return 1
-}
 
-fn_remove_tun_interface() {
-    echo "Remove tun interface $RESERVED_IFACE"
-    local iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
-
-    # fn_ndm_if_down "$iface"
-    fn_ndm_if_remove "$iface"
-    # fn_ndm_save_system_config
-}
-
-fn_up_tun_interface() {
-    if [ -z "$RESERVED_IFACE" ]; then
-        echo "No reserved interface to work with"
-        return 1
-    fi
-
-    echo "Up tun interface $RESERVED_IFACE"
-    local iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
-
-    fn_ndm_if_up "$iface"
-    # fn_ndm_save_system_config
+    fn_ndm_if_up "$iface" || return 1
 }
 
 fn_down_tun_interface() {
-    if [ -z "$RESERVED_IFACE" ]; then
-        echo "No reserved interface to work with"
+    if [ -z "$IFACE" ]; then
+        echo "No interface to work with" >&2
         return 1
     fi
-
-    echo "Down tun interface $RESERVED_IFACE"
-    local iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
 
     fn_ndm_if_down "$iface"
-    # fn_ndm_save_system_config
-}
-
-fn_acquire_tun_interface() {
-    echo "Resolve interface credentials..."
-    fn_load_tun_interface_config || return 1
-
-    local changed=0
-
-    if [ "$IFACE" != "$RESERVED_IFACE" ]; then
-        if [ -n "$RESERVED_IFACE" ]; then
-            echo "Acquired interface $RESERVED_IFACE changed to $IFACE"
-            echo "Remove old acquired interface $RESERVED_IFACE"
-            local reserved_iface=$(fn_convert_to_ndm_name "$RESERVED_IFACE")
-            fn_ndm_if_remove "$reserved_iface"
-        fi
-
-        # create new interface
-        fn_create_tun_interface || return 1
-        changed=1
-    else
-        local iface=$(fn_convert_to_ndm_name "$IFACE")
-
-        if [ -n "$RESERVED_IFACE_IP" ] && [ "$IFACE_IP" != "$RESERVED_IFACE_IP" ]; then
-            echo "IP address $RESERVED_IFACE_IP changed to $IFACE_IP"
-            changed=1
-        fi
-
-        if [ -n "$RESERVED_IFACE_MASK" ] && [ "$IFACE_MASK" != "$RESERVED_IFACE_MASK" ]; then
-            echo "Netmask $RESERVED_IFACE_MASK changed to $IFACE_MASK"
-            changed=1
-        fi
-
-        if [ -n "$RESERVED_IFACE_NAME" ] && [ "$IFACE_NAME" != "$RESERVED_IFACE_NAME" ]; then
-            echo "Interface name $RESERVED_IFACE_NAME changed to $IFACE_NAME"
-            fn_ndm_if_set_description "$iface" "$IFACE_NAME"
-            changed=1
-        fi
-
-        if [ "$changed" -eq 1 ]; then
-            fn_ndm_if_set_address "$iface" "$IFACE_IP" "$IFACE_MASK" || return 1
-        fi
-    fi
-
-    if [ "$changed" -eq 1 ]; then
-        RESERVED_IFACE="$IFACE"
-        fn_create_reserved_config
-        fn_ndm_save_system_config
-    fi
-}
-
-fn_release_tun_interface() {
-    if [ -z "$RESERVED_IFACE" ]; then
-        echo "No reserved interface to work with"
-        return 1
-    fi
-
-    fn_remove_tun_interface
-    fn_remove_reserved_config
-    fn_ndm_save_system_config
 }
