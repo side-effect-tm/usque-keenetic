@@ -2,6 +2,8 @@ name: Release Checks
 on:
   pull_request:
     branches: [ main ]
+    paths:
+      - 'VERSION' # Запуск ТОЛЬКО если изменился этот файл
 
 jobs:
   test-and-verify:

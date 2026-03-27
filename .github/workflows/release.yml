@@ -2,6 +2,8 @@ name: Release
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'VERSION' # Запуск ТОЛЬКО если изменился этот файл
   workflow_dispatch:
 
 jobs:
