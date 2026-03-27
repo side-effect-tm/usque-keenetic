@@ -1,0 +1,27 @@
+#!/bin/sh
+
+[ "${PKG_UPGRADE}" = "1" ] && exit 0
+
+fn_remove_binary() {
+  rm -f "$SERVICE_BIN"
+}
+
+fn_remove_all_files() {
+  rm -f $LOG_FILE
+  echo -e "\nRemove config? y/N"
+  read yn
+  case $yn in
+    [Yy]*)
+      rm -rf $CONFIG_DIR
+      ;;
+  esac
+}
+
+# Remove binary file
+fn_remove_binary
+
+# Remove all data
+fn_remove_all_files
+
+echo "Uninstallation successful"
+exit 0

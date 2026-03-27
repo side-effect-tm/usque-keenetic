@@ -1,0 +1,52 @@
+name: Release
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'VERSION' # Запуск ТОЛЬКО если изменился этот файл
+  workflow_dispatch:
+
+jobs:
+  build-packages:
+    name: Build and publish package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: get_version
+        run: echo "version=$(cat VERSION | xargs)" >> $GITHUB_OUTPUT
+
+      - name: Build entware packages
+        run: make pkg-all
+
+      - name: Build entware reposioty
+        run: make repository
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release v${{ steps.get_version.outputs.version }}
+          draft: true
+          files: ./out/tmp/*.ipk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './out/_pages'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

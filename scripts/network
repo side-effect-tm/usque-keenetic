@@ -1,0 +1,189 @@
+#!/bin/sh
+
+fn_get_available_tun_interface() {
+    local existing=$(ip -o link show | awk -F': ' '{print $2}' | grep '^opkgtun[0-9]*$')
+
+    if [ -z "$existing" ]; then
+        echo "opkgtun0"
+        return 0
+    fi
+
+    local max=$(echo "$existing" | sed 's/opkgtun//' | sort -n | tail -1)
+    local next=$((max + 1))
+
+    echo "opkgtun$next"
+}
+
+fn_get_available_ip() {
+    local subnet="172.16.1"
+    local start=100
+    local end=200
+
+    for i in $(seq $start $end); do
+        local ip="$subnet.$i"
+
+        if ! grep -q "$ip" /proc/net/arp 2>/dev/null &&
+            ! ping -c 1 -W 1 "$ip" >/dev/null 2>&1; then
+            echo "$ip"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# $1 - interface
+fn_net_if_exists() {
+    ip link show "$1" 2>/dev/null | grep -q "$1"
+}
+
+# $1 - interface
+fn_convert_to_net_if_name() {
+    echo "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+# $1 - interface
+fn_convert_to_ndm_name() {
+    echo "$1" | sed 's/^opkg/Opkg/; s/tun/Tun/'
+}
+
+# $1 - ndm command
+# $2 - error message
+fn_ndm_cmd() {
+    local out
+    out=$(/bin/ndmc -c "$1" 2>&1 >/dev/null) || {
+        echo "$2:"
+        echo "| $out" >&2
+        return 1
+    }
+}
+
+# $1 - ndm interface
+fn_ndm_if_create() {
+    fn_ndm_cmd \
+        "interface $1" \
+        "Failed to create interface $1"
+}
+
+# $1 - ndm interface
+fn_ndm_if_remove() {
+    fn_ndm_cmd \
+        "no interface $1" \
+        "Failed to remove interface $1"
+}
+
+# $1 - ndm interface
+# $2 - ip
+# $3 - netmask
+fn_ndm_if_set_address() {
+    fn_ndm_cmd \
+        "interface $1 ip address $2 $3" \
+        "Failed to set ip/netmask for interface $1"
+}
+
+# $1 - ndm interface
+# $2 - description
+fn_ndm_if_set_description() {
+    fn_ndm_cmd \
+        "interface $1 description $2" \
+        "Failed to set description for interface $1"
+}
+
+# $1 - ndm interface
+fn_ndm_if_up() {
+    fn_ndm_cmd \
+        "interface $1 up" \
+        "Failed to up interface $1"
+}
+
+# $1 - ndm interface
+fn_ndm_if_down() {
+    fn_ndm_cmd \
+        "interface $1 down" \
+        "Failed to down interface $1"
+}
+
+# $1 - ndm interface
+fn_ndm_if_exists() {
+    ndmc -c "show interface $1" >/dev/null
+}
+
+fn_ndm_save_system_config() {
+    fn_ndm_cmd \
+        "system configuration save" \
+        "Failed to save system config"
+}
+
+fn_resolve_tun_interface_config() {
+    if [ -z "$IFACE_IP" ]; then
+        local val=$(fn_get_available_ip)
+        if [ $? -eq 1 ]; then
+            echo "Failed to get dynamic ip address for interface $IFACE" >&2
+            return 1
+        fi
+        IFACE_IP="$val"
+    fi
+
+    if [ -z "$IFACE_MASK" ]; then
+        IFACE_MASK="255.255.255.255"
+    fi
+
+    if [ -z "$IFACE_NAME" ]; then
+        IFACE_NAME="usque"
+    fi
+}
+
+fn_check_tun_interface() {
+    local iface=$(fn_convert_to_net_if_name)
+    if fn_net_if_exists "$iface"; then
+        echo "Interface $IFACE is already in use." >&2
+        return 1
+    fi
+}
+
+fn_acquire_tun_inerface() {
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
+
+    if ! fn_ndm_if_exists "$iface"; then
+        echo "Create tun interface $IFACE"
+        fn_ndm_if_create "$iface" || return 1
+    fi
+}
+
+fn_setup_tun_interface() {
+    if [ -z "$IFACE" ]; then
+        echo "No interface to work with" >&2
+        return 1
+    fi
+
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
+
+    echo "Setup tun interface $IFACE ($IFACE_NAME): ip=$IFACE_IP netmask=$IFACE_MASK"
+    fn_ndm_if_set_description "$iface" "$IFACE_NAME" || return 1
+
+    fn_ndm_cmd \
+        "interface $iface ip global auto" \
+        "Failed to perform 'ip global auto'" || return 1
+
+    fn_ndm_cmd \
+        "interface $iface ip tcp adjust-mss pmtu" \
+        "Failed to set perform 'ip tcp adjust-mss pmtu'" || return 1
+
+    fn_ndm_if_set_address "$iface" "$IFACE_IP" "$IFACE_MASK" || return 1
+
+    fn_ndm_cmd \
+        "interface $iface ip mtu 1280" \
+        "Failed to set MTU" || return 1
+
+    fn_ndm_if_up "$iface" || return 1
+}
+
+fn_release_tun_interface() {
+    if [ -z "$IFACE" ]; then
+        echo "No interface to work with" >&2
+        return 1
+    fi
+
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
+    fn_ndm_if_down "$iface"
+}

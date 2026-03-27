@@ -1,0 +1,10 @@
+#!/bin/sh
+# Entware startup script
+
+PATH=/opt/sbin:/opt/bin:/opt/usr/sbin:/opt/usr/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+NAME="USQUE"
+USQUE_BIN="/opt/usr/bin/usque"
+PIDFILE="/opt/var/run/usque.pid"
+CONFIG_FILE="/opt/etc/usque/usque.conf"
+SESSION_FILE="/opt/etc/usque/session.conf"

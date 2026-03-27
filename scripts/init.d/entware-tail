@@ -1,0 +1,72 @@
+#!/bin/sh
+
+fn_start() {
+    if fn_is_running; then
+        echo "Service $NAME is already running" >&2
+        return 1
+    fi
+
+    fn_validate_config || return 1
+    fn_resolve_tun_interface_config || return 1
+    fn_check_tun_interface || return 1
+    fn_create_session_if_required || return 1
+
+    fn_acquire_tun_inerface || return 1
+
+    echo "Starting $NAME service..."
+    # usque require root for creating tun interface
+    # start-stop-daemon -S -bmc "$USER" -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
+    start-stop-daemon -S -bm -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
+        echo "Failed to start $NAME service" >&2
+        rm -f "$PIDFILE"
+        fn_stop_internal
+        return 1
+    }
+
+    fn_setup_tun_interface || {
+        fn_stop_internal
+        return 1
+    }
+
+    fn_create_running_config
+    echo "Started $NAME service"
+}
+
+fn_stop_internal() {
+    echo "Stopping $NAME service..."
+    fn_release_tun_interface
+    fn_remove_running_config
+
+    # kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
+    start-stop-daemon -K -p "$PIDFILE" && rm -f "$PIDFILE"
+
+    echo "Stopped $NAME service"
+}
+
+fn_stop() {
+    if ! fn_is_running; then
+        echo "Service $NAME is not running" >&2
+        return 1
+    fi
+
+    fn_stop_internal
+}
+
+case "$1" in
+start)
+    fn_start
+    ;;
+stop)
+    fn_stop
+    ;;
+status)
+    fn_status
+    ;;
+restart)
+    fn_stop
+    fn_start
+    ;;
+*)
+    echo "Usage: $0 {start|stop|restart|status}"
+    ;;
+esac

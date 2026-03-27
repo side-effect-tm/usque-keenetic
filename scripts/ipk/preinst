@@ -1,0 +1,30 @@
+#!/bin/sh
+
+CURRENT_VERSION=0 # This variable set by build
+
+# Set `install` or `upgrade` for postinst script
+echo "$1" >"$INSTALL_TYPE_FILE"
+
+# Migrations
+NEED_MIGRATION_CONF=0
+
+INSTALLED_VERSION=$(grep -E '^CONFIG_VERSION=' "$CONFIG_FILE" 2>/dev/null | grep -oE '[0-9]+$')
+
+if [ -z "$INSTALLED_VERSION" ]; then
+  NEED_MIGRATION_CONF=1
+elif [ "$INSTALLED_VERSION" -lt "$CURRENT_VERSION" ]; then
+  NEED_MIGRATION_CONF=1
+fi
+
+if [ $NEED_MIGRATION_CONF -ne 0 ]; then
+  if [ -f "$CONFIG_FILE" ]; then
+    # Old config
+    mv "$CONFIG_FILE" "$CONFIG_FILE-old"
+    echo "Old configuration file was moved to $CONFIG_FILE-old"
+  fi
+
+  # We need clean install
+  echo "install" >"$INSTALL_TYPE_FILE"
+fi
+
+exit 0
