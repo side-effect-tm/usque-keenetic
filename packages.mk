@@ -58,7 +58,7 @@ _pkg-content:
 	make _combine FILES="scripts/ipk/_shared scripts/ipk/preinst" OUTPUT=$(PKG_CONTROL_ROOT)/preinst
 	sed -i -E "s#^CURRENT_VERSION=([0-9]+)#CURRENT_VERSION=$(CONFIG_VERSION)#" $(PKG_CONTROL_ROOT)/preinst
 	make _combine FILES="scripts/ipk/_shared scripts/network scripts/ipk/postinst" OUTPUT=$(PKG_CONTROL_ROOT)/postinst
-	make _combine FILES="scripts/ipk/_shared scripts/network cripts/ipk/prerm" OUTPUT=$(PKG_CONTROL_ROOT)/prerm
+	make _combine FILES="scripts/ipk/_shared scripts/network scripts/ipk/prerm" OUTPUT=$(PKG_CONTROL_ROOT)/prerm
 	make _combine FILES="scripts/ipk/_shared scripts/ipk/postrm" OUTPUT=$(PKG_CONTROL_ROOT)/postrm
 	#
 	chmod +x $(PKG_CONTROL_ROOT)/preinst
