@@ -1,0 +1,32 @@
+name: Release Checks
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-verify:
+    name: Test and verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Нужно для доступа к тегам
+
+      - name: Check version uniqueness
+        run: |
+          CURRENT_VERSION=$(cat VERSION | xargs)
+          TAG_NAME="v$CURRENT_VERSION"
+
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "❌ ERROR: Release $TAG_NAME already exists."
+            echo "Change project version in VERSION file"
+            exit 1
+          fi
+
+      - name: Build entware packages
+        run: make pkg-all
+
+      - name: Build entware reposioty
+        run: make repository
