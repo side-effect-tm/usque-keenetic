@@ -61,6 +61,11 @@ _pkg-content:
 	make _combine FILES="scripts/ipk/_shared sscripts/network cripts/ipk/prerm" OUTPUT=$(PKG_CONTROL_ROOT)/prerm
 	make _combine FILES="scripts/ipk/_shared scripts/ipk/postrm" OUTPUT=$(PKG_CONTROL_ROOT)/postrm
 	#
+	chmod +x $(PKG_CONTROL_ROOT)/preinst
+	chmod +x $(PKG_CONTROL_ROOT)/postinst
+	chmod +x $(PKG_CONTROL_ROOT)/prerm
+	chmod +x $(PKG_CONTROL_ROOT)/postrm
+	#
 	echo "Write data files"
 	cp -r fs/* $(PKG_DATA_APP_ROOT)/
 	mkdir -p $(PKG_DATA_APP_ROOT)/var/log
