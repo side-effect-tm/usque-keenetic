@@ -19,10 +19,11 @@ fn_start() {
     start-stop-daemon -S -bm -p "$PIDFILE" -x "$USQUE_BIN" -- $(fn_daemon_args) || {
         echo "Failed to start $NAME service" >&2
         rm -f "$PIDFILE"
+        fn_stop_internal
         return 1
     }
 
-    fn_up_tun_interface || {
+    fn_setup_tun_interface || {
         fn_stop_internal
         return 1
     }

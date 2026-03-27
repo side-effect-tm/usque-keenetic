@@ -141,23 +141,6 @@ fn_check_tun_interface() {
     fi
 }
 
-fn_create_tun_interface() {
-    echo "Create tun interface $IFACE: $IFACE_IP $IFACE_MASK"
-    local iface=$(fn_convert_to_ndm_name "$IFACE")
-
-    fn_ndm_if_create "$iface" || return 1
-    # fn_ndm_save_system_config
-}
-
-fn_remove_tun_interface() {
-    echo "Remove tun interface $IFACE"
-    local iface=$(fn_convert_to_ndm_name "$IFACE")
-
-    # fn_ndm_if_down "$iface"
-    fn_ndm_if_remove "$iface" || return 1
-    # fn_ndm_save_system_config
-}
-
 fn_acquire_tun_inerface() {
     local iface=$(fn_convert_to_ndm_name "$IFACE")
 
@@ -165,6 +148,15 @@ fn_acquire_tun_inerface() {
         echo "Create tun interface $IFACE"
         fn_ndm_if_create "$iface" || return 1
     fi
+}
+
+fn_setup_tun_interface() {
+    if [ -z "$IFACE" ]; then
+        echo "No interface to work with" >&2
+        return 1
+    fi
+
+    local iface=$(fn_convert_to_ndm_name "$IFACE")
 
     echo "Setup tun interface $IFACE ($IFACE_NAME): ip=$IFACE_IP netmask=$IFACE_MASK"
     fn_ndm_if_set_description "$iface" "$IFACE_NAME" || return 1
